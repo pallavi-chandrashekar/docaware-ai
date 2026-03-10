@@ -1,0 +1,7 @@
+node_modules/
+.docaware/
+coverage/
+dist/
+*.tgz
+.env
+.DS_Store

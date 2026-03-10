@@ -1,0 +1,37 @@
+# DocAware AI Dev Assistant Configuration
+# Copy this file to .docaware.yml in your project root.
+
+claude:
+  model: "claude-sonnet-4-5-20250929"   # Claude model for analysis
+  max_tokens: 4096                       # Max output tokens per LLM call
+  # api_key is loaded from ANTHROPIC_API_KEY env var (never put it here)
+
+review:
+  severity_threshold: "low"              # Minimum severity: low, medium, high, critical
+  categories:                            # Categories to check
+    - deprecated_api
+    - anti_pattern
+    - incorrect_usage
+    - security
+  ignore_patterns:                       # Glob patterns to skip
+    - "**/*.test.js"
+    - "**/node_modules/**"
+    - "dist/**"
+
+migrate:
+  lang: "js"                             # Default language: js, py
+  scan_dir: "."                          # Default directory to scan
+
+memory:
+  enabled: true
+  storage_dir: ".docaware/memory"        # Where to store vector index
+  max_context_entries: 10                # Max past entries to include in LLM context
+
+output:
+  format: "terminal"                     # Default output: terminal, json, markdown
+  color: true                            # ANSI colors (overridden by NO_COLOR env)
+
+# Research benchmark mode
+benchmark:
+  enabled: false
+  output_dir: ".docaware/benchmarks"
