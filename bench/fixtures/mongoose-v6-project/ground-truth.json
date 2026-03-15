@@ -1,0 +1,82 @@
+[
+  {
+    "file": "src/models.js",
+    "line": 11,
+    "apiName": "Schema useCreateIndex",
+    "category": "deprecated_api",
+    "isReal": true,
+    "description": "useCreateIndex schema option removed in Mongoose v7"
+  },
+  {
+    "file": "src/models.js",
+    "line": 17,
+    "apiName": "mongoose.connect useNewUrlParser",
+    "category": "deprecated_api",
+    "isReal": true,
+    "description": "useNewUrlParser connection option removed in Mongoose v7"
+  },
+  {
+    "file": "src/models.js",
+    "line": 18,
+    "apiName": "mongoose.connect useUnifiedTopology",
+    "category": "deprecated_api",
+    "isReal": true,
+    "description": "useUnifiedTopology connection option removed in Mongoose v7"
+  },
+  {
+    "file": "src/models.js",
+    "line": 22,
+    "apiName": "mongoose.connect callback",
+    "category": "removed_api",
+    "isReal": true,
+    "description": "mongoose.connect() with callback removed in v7, use async/await"
+  },
+  {
+    "file": "src/models.js",
+    "line": 39,
+    "apiName": "Model.find callback",
+    "category": "removed_api",
+    "isReal": true,
+    "description": "Model.find() with callback removed in v7, use promises or async/await"
+  },
+  {
+    "file": "src/models.js",
+    "line": 48,
+    "apiName": "Model.findOneAndUpdate useFindAndModify",
+    "category": "removed_api",
+    "isReal": true,
+    "description": "useFindAndModify option removed in v7; findOneAndUpdate always uses the native command"
+  },
+  {
+    "file": "src/models.js",
+    "line": 57,
+    "apiName": "Model.count",
+    "category": "removed_api",
+    "isReal": true,
+    "description": "Model.count() removed in v7, use Model.countDocuments() or estimatedDocumentCount()"
+  },
+  {
+    "file": "src/models.js",
+    "line": 64,
+    "apiName": "Model.update",
+    "category": "removed_api",
+    "isReal": true,
+    "description": "Model.update() removed in v7, use updateOne() or updateMany()"
+  },
+  {
+    "file": "src/models.js",
+    "line": 73,
+    "apiName": "Model.find",
+    "category": "correct_usage",
+    "isReal": false,
+    "description": "This is correct v7-compatible find() with await — should NOT be flagged"
+  },
+  {
+    "file": "src/models.js",
+    "line": 79,
+    "apiName": "Model.countDocuments",
+    "category": "correct_usage",
+    "isReal": false,
+    "description": "This is correct v7-compatible countDocuments() — should NOT be flagged"
+  }
+]

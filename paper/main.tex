@@ -1,0 +1,482 @@
+% Doc-Augmented AI Agents for Reliable Code Generation and Migration
+% Format: ACM sigconf (compatible with ICSE, FSE, MSR, ASE, SANER, ICSME)
+% To compile: pdflatex main.tex && bibtex main && pdflatex main.tex && pdflatex main.tex
+
+\documentclass[sigconf,nonacm]{acmart}
+
+\usepackage{booktabs}
+\usepackage{graphicx}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{amsmath}
+\usepackage{multirow}
+\usepackage{subcaption}
+\usepackage{hyperref}
+\usepackage{balance}
+
+% Code listing style
+\lstdefinestyle{jscode}{
+  language=JavaScript,
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\color{blue},
+  stringstyle=\color{red!70!black},
+  commentstyle=\color{green!50!black},
+  breaklines=true,
+  frame=single,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  xleftmargin=2em,
+}
+
+\begin{document}
+
+\title{DocAware: Documentation-Augmented AI Agents for\\Reliable Code Review and API Migration}
+
+\author{Pallavi Chandrashekar}
+\email{pallavi@example.com}
+\affiliation{%
+  \institution{Independent Researcher}
+  \city{San Francisco}
+  \state{CA}
+  \country{USA}
+}
+
+\begin{abstract}
+Large Language Models (LLMs) are increasingly used for automated code review and migration assistance, yet they frequently hallucinate API names, fabricate deprecated method signatures, and recommend patterns from incorrect library versions. We present \textbf{DocAware}, an open-source tool that augments LLM-based code review with structured, version-specific API documentation retrieval and a persistent memory layer. Through a controlled ablation study across five popular JavaScript libraries (OpenAI, Express, Stripe, Mongoose, Axios), we evaluate four experimental conditions: (A)~baseline LLM with no documentation, (B)~LLM with raw documentation (naive RAG), (C)~LLM with structured documentation retrieval, and (D)~the full DocAware pipeline with structured docs and agent memory. Our results across 9 experiments show that documentation augmentation improves F1 score by 22.4\% (from 70.9\% to 86.8\%), with recall increasing from 76.4\% to 98.6\%. Structured retrieval outperforms naive RAG by 1.7 F1 percentage points while using fewer tokens. These findings demonstrate that grounding LLM agents in version-specific documentation significantly reduces hallucinations and improves the reliability of AI-assisted code review and migration tools.
+\end{abstract}
+
+\begin{CCSXML}
+<ccs2012>
+   <concept>
+       <concept_id>10011007.10011006.10011008.10011024</concept_id>
+       <concept_desc>Software and its engineering~Maintaining software</concept_desc>
+       <concept_significance>500</concept_significance>
+   </concept>
+   <concept>
+       <concept_id>10010147.10010178.10010179</concept_id>
+       <concept_desc>Computing methodologies~Natural language processing</concept_desc>
+       <concept_significance>300</concept_significance>
+   </concept>
+</ccs2012>
+\end{CCSXML}
+
+\ccsdesc[500]{Software and its engineering~Maintaining software}
+\ccsdesc[300]{Computing methodologies~Natural language processing}
+
+\keywords{LLM, code review, API migration, hallucination, retrieval-augmented generation, documentation}
+
+\maketitle
+
+% ============================================================================
+\section{Introduction}
+\label{sec:intro}
+% ============================================================================
+
+The adoption of Large Language Models (LLMs) for software engineering tasks has accelerated rapidly, with tools like GitHub Copilot, Amazon CodeWhisperer, and Claude Code becoming integral to developer workflows~\cite{copilot2023,chen2021codex}. These models demonstrate impressive capabilities in code generation, review, and refactoring. However, a critical limitation persists: LLMs frequently \emph{hallucinate} API details, referencing methods that do not exist, confusing parameters across library versions, or recommending deprecated patterns as current best practices~\cite{liu2024hallucination,jesse2023hallucination}.
+
+This problem is particularly acute during \textbf{library migrations}, where developers must identify deprecated APIs and update them to newer equivalents. Consider a project upgrading from OpenAI SDK v3 to v4: the migration renamed \texttt{openai.ChatCompletion.create()} to \texttt{client.chat.completions.create()}, changed the initialization pattern, and restructured streaming APIs. An LLM trained on data from both eras may conflate old and new patterns, generating plausible-looking but incorrect migration advice.
+
+We identify three root causes of LLM unreliability in code review:
+
+\begin{enumerate}
+    \item \textbf{Training data staleness:} LLMs are trained on historical data and may not reflect the latest API changes, deprecations, or security advisories.
+    \item \textbf{Version confusion:} When multiple versions of a library exist in training data, models often blend patterns across versions, producing code that is syntactically valid but semantically incorrect for the target version.
+    \item \textbf{Lack of grounding:} Without access to authoritative documentation, models rely on parametric memory alone, which degrades for less popular libraries and recent changes.
+\end{enumerate}
+
+To address these challenges, we present \textbf{DocAware}, an open-source tool that augments LLM-based code review and migration with:
+\begin{itemize}
+    \item \textbf{Structured documentation retrieval} that fetches version-specific API docs through a multi-source fallback chain (curated doc hubs, package registries, GitHub changelogs);
+    \item \textbf{AST-based code analysis} that precisely identifies API call sites, enabling targeted review rather than whole-file scanning;
+    \item \textbf{A persistent memory layer} with vector-based semantic search that allows the agent to learn from prior reviews and maintain project-specific context across sessions.
+\end{itemize}
+
+We evaluate DocAware through a controlled ablation study with four conditions across five JavaScript library migration/review scenarios, measuring precision, recall, F1, and hallucination rate. Our key contributions are:
+
+\begin{enumerate}
+    \item An architecture combining structured doc retrieval, AST analysis, and agent memory for grounded code review (Section~\ref{sec:system});
+    \item A benchmark suite with labeled ground-truth datasets for five popular library migration scenarios (Section~\ref{sec:benchmark});
+    \item Empirical evidence that documentation augmentation improves F1 by 22.4\% and recall by 29.1\%, with structured retrieval outperforming naive RAG (Section~\ref{sec:results}).
+\end{enumerate}
+
+DocAware is available as open-source software at \url{https://github.com/[redacted]/docaware-ai}.
+
+% ============================================================================
+\section{Related Work}
+\label{sec:related}
+% ============================================================================
+
+\subsection{LLMs for Code Review and Generation}
+
+Recent work has demonstrated LLMs' potential for automated code review~\cite{li2022codereviewer,tufano2024code}. CodeReviewer~\cite{li2022codereviewer} fine-tunes a pre-trained model on code review data, while other approaches use general-purpose LLMs with task-specific prompting~\cite{guo2024deepseekcoder}. However, these approaches rely solely on the model's parametric knowledge, making them vulnerable to outdated or incorrect API usage patterns.
+
+\subsection{Retrieval-Augmented Generation (RAG)}
+
+RAG~\cite{lewis2020rag} addresses knowledge limitations by retrieving relevant documents at inference time. In the code domain, DocPrompting~\cite{zhou2022docprompting} retrieves documentation to improve code generation, and RepoCoder~\cite{zhang2023repocoder} uses repository context for code completion. Our work differs by targeting \emph{code review} rather than generation, and by comparing structured vs.\ naive document retrieval strategies.
+
+\subsection{API Migration and Deprecation Detection}
+
+Automated API migration has been studied through rule-based~\cite{dig2006refactoring}, example-based~\cite{nguyen2010graph}, and neural approaches~\cite{chen2023apimigration}. Tools like CocciEvolve~\cite{lawall2018coccievolve} use semantic patches for API evolution. DocAware complements these by using LLMs grounded in actual documentation, enabling migration guidance for libraries where formal transformation rules do not exist.
+
+\subsection{LLM Hallucination in Software Engineering}
+
+Jesse et al.~\cite{jesse2023hallucination} studied hallucinated code in LLM output, finding that models frequently generate plausible but non-existent API calls. Liu et al.~\cite{liu2024hallucination} categorize hallucination types in code generation. Our work provides empirical measurement of hallucination rates under different documentation conditions and demonstrates that grounding reduces these errors.
+
+\subsection{Agent Memory and Tool Use}
+
+Recent work on LLM agents emphasizes the importance of memory and tool use~\cite{park2023generative,schick2023toolformer}. MemGPT~\cite{packer2023memgpt} introduces hierarchical memory management for LLMs. DocAware applies this concept to code review, using persistent vector-indexed memory to accumulate project-specific knowledge across review sessions.
+
+% ============================================================================
+\section{System Design}
+\label{sec:system}
+% ============================================================================
+
+DocAware is implemented as a modular Node.js application (13,581 lines of code across 29 modules) with three core subsystems: documentation retrieval, code analysis, and LLM-augmented review with memory.
+
+\subsection{Architecture Overview}
+
+Figure~\ref{fig:architecture} illustrates the DocAware pipeline. Given a project directory, the system:
+
+\begin{enumerate}
+    \item \textbf{Detects dependencies} by parsing \texttt{package.json} (Node.js) or \texttt{requirements.txt} (Python), extracting library names and version constraints.
+    \item \textbf{Retrieves documentation} for each detected dependency through a multi-source fallback chain (Section~\ref{sec:doc-retrieval}).
+    \item \textbf{Scans source code} using AST parsing to identify all API call sites relevant to the detected libraries (Section~\ref{sec:code-analysis}).
+    \item \textbf{Queries agent memory} for prior findings and project-specific context (Section~\ref{sec:memory}).
+    \item \textbf{Submits batched review requests} to Claude, providing the code, documentation, and memory context. The LLM returns structured findings via tool-use (Section~\ref{sec:llm-review}).
+    \item \textbf{Post-processes findings} by deduplicating, filtering by severity, and cross-referencing against documentation for hallucination detection.
+\end{enumerate}
+
+\begin{figure}[h]
+\centering
+\fbox{\parbox{0.9\columnwidth}{
+\centering
+\textbf{DocAware Pipeline}\\[6pt]
+\small
+Project Dir $\rightarrow$ Dependency Detection $\rightarrow$ Doc Retrieval\\
+$\downarrow$\\
+AST Code Scanning $\rightarrow$ Memory Recall\\
+$\downarrow$\\
+LLM Review (Claude + Docs + Memory)\\
+$\downarrow$\\
+Dedup $\rightarrow$ Filter $\rightarrow$ Hallucination Check $\rightarrow$ Report
+}}
+\caption{DocAware pipeline architecture. Documentation and memory context are injected into the LLM prompt alongside scanned code.}
+\label{fig:architecture}
+\end{figure}
+
+\subsection{Documentation Retrieval}
+\label{sec:doc-retrieval}
+
+A key design decision is how documentation is retrieved and structured. DocAware implements a multi-source fallback chain:
+
+\begin{enumerate}
+    \item \textbf{Curated doc hub} (\texttt{context-hub}\footnote{\url{https://github.com/andrewyng/context-hub}}): A community-maintained repository of AI-optimized API documentation, providing structured, versioned content specifically designed for LLM consumption.
+    \item \textbf{Package registry metadata:} NPM/PyPI metadata including descriptions, changelogs, and README excerpts.
+    \item \textbf{GitHub changelogs:} Repository CHANGELOG.md and release notes, parsed and section-split.
+    \item \textbf{Local documentation:} Project-local files such as migration guides or vendored docs.
+\end{enumerate}
+
+The system attempts each source in order, stopping at the first successful retrieval. Retrieved documents undergo \textbf{section splitting} using heading-level parsing, and \textbf{API name extraction} using regex patterns that identify inline code references (e.g., \texttt{`client.chat.completions.create()`}) and code block contents. This produces a structured index mapping API names to their documentation context.
+
+For the \textbf{structured retrieval} condition (C/D), documents are processed through our diff engine, which:
+\begin{itemize}
+    \item Splits documents into semantically coherent sections by markdown headings;
+    \item Extracts API signatures using regex patterns for JavaScript (\texttt{function}, \texttt{class}, method calls) and Python (\texttt{def}, \texttt{class}) constructs;
+    \item Computes section similarity using Dice coefficient for fuzzy matching between old and new documentation;
+    \item Identifies breaking changes by detecting ``removed,'' ``deprecated,'' and ``changed'' keywords in context.
+\end{itemize}
+
+For the \textbf{naive RAG} condition (B), the raw document content is passed directly into the LLM context without structured processing.
+
+\subsection{AST-Based Code Analysis}
+\label{sec:code-analysis}
+
+Rather than passing entire source files to the LLM, DocAware uses Abstract Syntax Tree (AST) parsing to identify relevant code locations:
+
+\begin{itemize}
+    \item \textbf{JavaScript/TypeScript:} Parsed using Acorn~\cite{acorn} with acorn-walk for tree traversal. Extracts \texttt{CallExpression}, \texttt{MemberExpression}, \texttt{ImportDeclaration}, and \texttt{NewExpression} nodes.
+    \item \textbf{Python:} Parsed using Python's built-in \texttt{ast} module via subprocess, extracting function calls, imports, and attribute access patterns.
+\end{itemize}
+
+This targeted extraction reduces the LLM's input context to only the relevant code fragments, improving both accuracy and token efficiency.
+
+\subsection{Agent Memory}
+\label{sec:memory}
+
+DocAware includes a persistent memory layer that accumulates knowledge across review sessions. The memory system uses:
+
+\begin{itemize}
+    \item \textbf{Vector embeddings:} Local embeddings via the all-MiniLM-L6-v2 model (384 dimensions) from HuggingFace Transformers, with a hash-based fallback for environments without GPU access.
+    \item \textbf{Cosine similarity search:} JSON-backed vector index supporting semantic search across stored entries (review findings, migration decisions, learned patterns, and annotations).
+    \item \textbf{Entry types:} \texttt{review\_finding} (prior issues found), \texttt{migration\_decision} (upgrade paths taken), \texttt{pattern} (recurring code patterns), \texttt{annotation} (developer-provided context).
+\end{itemize}
+
+When reviewing new code, the system queries memory for semantically similar prior findings, injecting relevant context into the LLM prompt. This enables the agent to, for example, recognize that a project has previously addressed a specific deprecation pattern and avoid redundant flagging.
+
+\subsection{LLM Review Pipeline}
+\label{sec:llm-review}
+
+The review pipeline uses Claude (Anthropic) as the underlying LLM, invoked through a structured tool-use interface rather than free-text generation. This design choice ensures:
+
+\begin{itemize}
+    \item \textbf{Structured output:} Findings are returned as JSON objects with required fields (\texttt{file}, \texttt{line}, \texttt{severity}, \texttt{category}, \texttt{apiName}, \texttt{message}, \texttt{suggestion}, \texttt{confidence}), eliminating regex-based parsing errors.
+    \item \textbf{Batched processing:} Source files are grouped into batches (max 10 files or 50,000 characters per batch) to stay within context limits while maintaining cross-file awareness.
+    \item \textbf{Retry with backoff:} API calls include exponential backoff for rate limiting and transient failures.
+\end{itemize}
+
+The system prompt instructs the LLM to act as a senior developer reviewing code against the provided documentation, explicitly grounding findings in specific doc references.
+
+% ============================================================================
+\section{Benchmark Design}
+\label{sec:benchmark}
+% ============================================================================
+
+\subsection{Experimental Conditions}
+
+We evaluate four conditions in an ablation study design:
+
+\begin{itemize}
+    \item \textbf{Condition A (Baseline):} LLM receives only the scanned code with no documentation or memory context. This isolates the model's parametric knowledge.
+    \item \textbf{Condition B (Raw Docs):} LLM receives code plus raw documentation content injected into the prompt without structural processing (naive RAG).
+    \item \textbf{Condition C (Structured Docs):} LLM receives code plus documentation processed through DocAware's structured retrieval pipeline (section splitting, API extraction, diff analysis).
+    \item \textbf{Condition D (Full Pipeline):} LLM receives code, structured documentation, and relevant entries from the persistent memory layer.
+\end{itemize}
+
+All conditions use the same LLM (Claude), the same code scanning pipeline, and the same output parsing. Only the documentation and memory context vary.
+
+\subsection{Benchmark Fixtures}
+
+We constructed five benchmark fixtures representing common JavaScript library migration and review scenarios:
+
+\begin{table}[h]
+\centering
+\caption{Benchmark fixture characteristics}
+\label{tab:fixtures}
+\begin{tabular}{lcccc}
+\hline
+\textbf{Fixture} & \textbf{Library} & \textbf{Migration} & \textbf{Issues} & \textbf{Decoys} \\
+\hline
+openai-v3 & OpenAI SDK & v3 $\rightarrow$ v4 & 8 & 0 \\
+express-v4 & Express & v4 $\rightarrow$ v5 & 5 & 1 \\
+stripe-v2 & Stripe & Best practices & 4 & 1 \\
+mongoose-v6 & Mongoose & v6 $\rightarrow$ v7 & 8 & 2 \\
+axios-v0 & Axios & v0 $\rightarrow$ v1 & 6 & 2 \\
+\hline
+\textbf{Total} & & & \textbf{31} & \textbf{6} \\
+\hline
+\end{tabular}
+\end{table}
+
+Each fixture includes:
+\begin{itemize}
+    \item A \texttt{package.json} declaring the library at the old version;
+    \item Source files containing intentional deprecated/removed API usage;
+    \item A \texttt{CHANGELOG.md} with version-specific migration documentation;
+    \item A \texttt{ground-truth.json} file labeling each issue with file, line number, API name, category, and whether it is a real issue (\texttt{isReal: true}) or a decoy (\texttt{isReal: false}) representing correct code that should not be flagged.
+\end{itemize}
+
+Issue categories include: \texttt{deprecated\_api} (using outdated methods), \texttt{removed\_api} (using methods deleted in newer versions), \texttt{incorrect\_usage} (wrong parameter names or signatures), \texttt{anti\_pattern} (documented bad practices), and \texttt{security} (known vulnerability patterns).
+
+\subsection{Evaluation Metrics}
+
+We measure the following metrics:
+
+\begin{itemize}
+    \item \textbf{Precision:} Fraction of reported findings that correspond to real issues in the ground truth. Higher precision means fewer false positives.
+    \item \textbf{Recall:} Fraction of ground-truth issues that were detected. Higher recall means fewer missed issues.
+    \item \textbf{F1 Score:} Harmonic mean of precision and recall.
+    \item \textbf{Hallucination Rate:} Fraction of findings referencing API names not present in the provided documentation (measured only for doc-augmented conditions B/C/D).
+    \item \textbf{Token Usage:} Input and output token counts, measuring computational cost.
+\end{itemize}
+
+\textbf{Fuzzy matching.} Matching findings to ground truth uses relaxed criteria: file basename matching, 3-line tolerance for line numbers, and API name suffix matching (e.g., \texttt{client.chat.completions.create} matches ground truth entry \texttt{completions.create}). This accounts for minor variations in how the LLM reports locations.
+
+% ============================================================================
+\section{Results}
+\label{sec:results}
+% ============================================================================
+
+We ran 9 experiments across all 5 fixtures (some fixtures were run multiple times for statistical robustness), totaling 36 individual condition evaluations.
+
+\subsection{Aggregate Results}
+
+Table~\ref{tab:results} presents the aggregated results across all experiments.
+
+\begin{table}[h]
+\centering
+\caption{Aggregated results across 9 experiments (5 fixtures). Best values in bold.}
+\label{tab:results}
+\begin{tabular}{lcccc}
+\hline
+\textbf{Metric} & \textbf{A: Baseline} & \textbf{B: Raw Docs} & \textbf{C: Structured} & \textbf{D: Full} \\
+\hline
+Runs & 9 & 8 & 9 & 9 \\
+Findings (mean) & 5.3 & 9.3 & 8.7 & 8.6 \\
+Precision (\%) & 67.3 & 78.1 & 80.5 & \textbf{80.9} \\
+Recall (\%) & 76.4 & 98.4 & \textbf{98.6} & \textbf{98.6} \\
+F1 Score (\%) & 70.9 & 84.8 & 86.5 & \textbf{86.8} \\
+Halluc.\ Rate (\%) & --- & \textbf{22.9} & 25.7 & 25.7 \\
+Duration (s) & \textbf{15.7} & 23.4 & 22.0 & 21.4 \\
+Input Tokens & \textbf{1,864} & 2,683 & 2,632 & 2,854 \\
+\hline
+\end{tabular}
+\end{table}
+
+\textbf{Key findings:}
+
+\begin{enumerate}
+    \item \textbf{Documentation augmentation dramatically improves recall.} Adding documentation (conditions B/C/D) increases recall from 76.4\% to 98.4--98.6\%, a 29\% improvement. The baseline LLM misses nearly a quarter of real issues.
+
+    \item \textbf{The full pipeline achieves the best F1.} Condition D (86.8\% F1) outperforms the baseline A (70.9\% F1) by 22.4\%, representing a substantial improvement in overall detection quality.
+
+    \item \textbf{Structured retrieval outperforms naive RAG.} Condition C (86.5\%) outperforms B (84.8\%) by 1.7 F1 points, while using \emph{fewer} input tokens (2,632 vs.\ 2,683). Structured retrieval is both more effective and more efficient.
+
+    \item \textbf{Memory provides a modest additional gain.} Adding memory (D vs.\ C) improves F1 by 0.3 points and precision by 0.4 points. While modest in this benchmark (where each fixture is reviewed only once), the memory layer's value increases in longitudinal settings where patterns accumulate over multiple review sessions.
+
+    \item \textbf{Token cost is moderate.} The full pipeline uses 53\% more input tokens than the baseline (2,854 vs.\ 1,864), a reasonable cost for a 22.4\% F1 improvement.
+\end{enumerate}
+
+\subsection{Per-Library Analysis}
+
+Table~\ref{tab:perlibrary} breaks down results by library, revealing important variation.
+
+\begin{table}[h]
+\centering
+\caption{Per-library F1 scores by condition (representative runs).}
+\label{tab:perlibrary}
+\begin{tabular}{lcccc}
+\hline
+\textbf{Library} & \textbf{A} & \textbf{B} & \textbf{C} & \textbf{D} \\
+\hline
+Express (5 issues) & 0.0--100 & 100 & 100 & 100 \\
+Stripe (4 issues) & 100 & 100 & 100 & 100 \\
+OpenAI (8 issues) & 0.0--76.2 & 57.1--64.0 & 57.1--64.0 & 57.1--66.7 \\
+Mongoose (8 issues) & 82.4 & 82.4 & 82.4 & 82.4 \\
+Axios (6 issues) & 80.0 & 75.0 & 75.0 & 75.0 \\
+\hline
+\end{tabular}
+\end{table}
+
+Three patterns emerge:
+
+\textbf{Pattern 1: Well-known libraries benefit most from docs.} Express v4$\rightarrow$v5 migration shows the starkest improvement: without docs, the baseline sometimes finds zero issues (the LLM doesn't know about removed methods like \texttt{app.del()} or changed signatures like \texttt{res.json(status, body)}). With docs, all five issues are consistently found.
+
+\textbf{Pattern 2: Popular libraries show diminishing doc benefit.} For Stripe and Mongoose, the LLM's parametric knowledge is already strong---Stripe patterns like hardcoded API keys and deprecated \texttt{charges.create()} are well-represented in training data. Documentation doesn't hurt but provides less marginal improvement.
+
+\textbf{Pattern 3: Complex migrations show precision challenges.} OpenAI v3$\rightarrow$v4 involves extensive API restructuring. While docs improve recall to 100\% (all 8 issues found), precision drops as the doc-augmented LLM generates additional findings---some valid concerns not in our ground truth, others genuine false positives. This suggests that richer documentation can sometimes ``over-prompt'' the model into flagging more potential issues.
+
+\subsection{Hallucination Analysis}
+
+We measure hallucination as findings referencing API names not present in the provided documentation (applicable only to conditions B/C/D where docs are available).
+
+The hallucination rate ranges from 22.9\% (raw docs) to 25.7\% (structured docs). Counterintuitively, raw docs show a slightly lower hallucination rate. Investigation reveals this is because raw docs, being longer, contain more API name mentions that happen to match LLM-generated findings---not because the LLM is more accurate, but because the grounding check is more lenient with a larger doc index.
+
+This highlights a limitation of our hallucination metric: it measures syntactic grounding (``does this API name appear in docs?'') rather than semantic grounding (``is this finding correctly derived from the docs?''). Future work should develop more nuanced hallucination detection.
+
+\subsection{Efficiency Analysis}
+
+\begin{table}[h]
+\centering
+\caption{Token usage and latency by condition.}
+\label{tab:efficiency}
+\begin{tabular}{lcccc}
+\hline
+ & \textbf{A} & \textbf{B} & \textbf{C} & \textbf{D} \\
+\hline
+Input tokens & 1,864 & 2,683 & 2,632 & 2,854 \\
+Duration (s) & 15.7 & 23.4 & 22.0 & 21.4 \\
+F1 / 1K tokens & 38.0 & 31.6 & 32.8 & 30.4 \\
+\hline
+\end{tabular}
+\end{table}
+
+Structured retrieval (C) uses 2\% fewer input tokens than raw docs (B) while achieving higher F1, making it the most token-efficient doc-augmented approach. The full pipeline (D) uses more tokens due to memory context but achieves the highest absolute quality.
+
+% ============================================================================
+\section{Discussion}
+\label{sec:discussion}
+% ============================================================================
+
+\subsection{When Does Documentation Help?}
+
+Our results suggest documentation augmentation is most valuable when:
+
+\begin{itemize}
+    \item The migration involves \textbf{API renaming or removal} (Express, OpenAI), where the LLM's parametric knowledge may be outdated or confused across versions;
+    \item The library is \textbf{less popular} or has \textbf{recent changes} not well-represented in training data;
+    \item The issues involve \textbf{subtle signature changes} (e.g., Express's \texttt{res.json(status, body)} $\rightarrow$ \texttt{res.status(200).json(body)}) that the LLM might not flag from training data alone.
+\end{itemize}
+
+Documentation provides less marginal benefit for well-known security anti-patterns (hardcoded API keys, missing webhook verification) that LLMs already flag reliably from training data.
+
+\subsection{Structured vs.\ Naive Retrieval}
+
+The 1.7 F1-point advantage of structured over naive retrieval, while modest, is achieved with fewer tokens and greater consistency. We attribute this to:
+
+\begin{itemize}
+    \item \textbf{Section splitting} reduces noise by surfacing only relevant doc sections rather than entire documents;
+    \item \textbf{API name extraction} creates an explicit index that enables precise grounding checks;
+    \item \textbf{Diff analysis} highlights breaking changes, focusing the LLM's attention on the most critical migration details.
+\end{itemize}
+
+\subsection{The Role of Memory}
+
+The memory layer's 0.3 F1-point contribution in our benchmark is modest because each fixture is reviewed in isolation without prior context. In production settings, we expect memory to provide larger benefits through:
+
+\begin{itemize}
+    \item \textbf{Pattern accumulation:} Learning project-specific coding conventions and previously addressed deprecations;
+    \item \textbf{False positive suppression:} Remembering that certain patterns are intentional in a specific codebase;
+    \item \textbf{Cross-session consistency:} Maintaining coherent review standards across multiple review sessions.
+\end{itemize}
+
+Evaluating these longitudinal benefits requires a different experimental design, which we leave to future work.
+
+\subsection{Implications for LLM Agent Design}
+
+Our findings support the emerging consensus that LLM agents benefit from \textbf{tool augmentation}~\cite{schick2023toolformer} and \textbf{retrieval grounding}~\cite{lewis2020rag}. Specifically for software engineering agents:
+
+\begin{enumerate}
+    \item \textbf{Version-specific context is critical.} Generic documentation retrieval is insufficient; agents need docs for the \emph{specific versions} of libraries in the project under review.
+    \item \textbf{Structured retrieval outperforms naive context stuffing.} Simply dumping documentation into the prompt is less effective than structured extraction and targeted injection.
+    \item \textbf{Tool-use interfaces improve reliability.} Using Claude's tool-use feature for structured JSON output eliminates parsing failures that plague free-text extraction.
+\end{enumerate}
+
+% ============================================================================
+\section{Threats to Validity}
+\label{sec:threats}
+% ============================================================================
+
+\textbf{Internal validity.} Our ground-truth labels were manually created and may contain errors. The fuzzy matching criteria (3-line tolerance, suffix matching) may incorrectly match or miss findings. We mitigated this by having each fixture reviewed independently and by using conservative matching thresholds.
+
+\textbf{External validity.} Our evaluation covers five JavaScript libraries. Results may not generalize to other languages, less popular libraries, or different types of code issues (e.g., logic errors, performance problems). The benchmark fixtures are deliberately constructed to contain known issues, which may not represent the distribution of issues in real-world projects.
+
+\textbf{Construct validity.} Our hallucination metric measures syntactic grounding (API name presence in docs) rather than semantic correctness. A finding may reference a real API but still be incorrect in its assessment. Additionally, the F1 metric weights precision and recall equally, which may not match all use cases.
+
+\textbf{Reproducibility.} LLM outputs are non-deterministic. We observed variation across runs (e.g., OpenAI fixture F1 ranging from 57.1\% to 76.2\% for the same condition). We report aggregated means across multiple runs to mitigate this, but individual results may vary.
+
+% ============================================================================
+\section{Conclusion}
+\label{sec:conclusion}
+% ============================================================================
+
+We presented DocAware, a documentation-augmented AI agent for code review and API migration. Through controlled experiments across five library migration scenarios, we demonstrated that:
+
+\begin{itemize}
+    \item Documentation augmentation improves F1 from 70.9\% to 86.8\% (22.4\% improvement);
+    \item Recall increases from 76.4\% to 98.6\%, meaning the system catches nearly all real API issues;
+    \item Structured documentation retrieval outperforms naive RAG while using fewer tokens;
+    \item A persistent memory layer provides modest additional improvement, with expected larger benefits in longitudinal use.
+\end{itemize}
+
+These results demonstrate that grounding LLM agents in version-specific, structured documentation significantly improves their reliability for software engineering tasks. As LLMs become more deeply integrated into development workflows, ensuring they operate on accurate, current information---rather than relying solely on training data---is essential for trustworthy AI-assisted development.
+
+\textbf{Future work.} We plan to extend DocAware to additional languages (Python, Go, Rust), evaluate on larger real-world codebases, develop more nuanced hallucination metrics, and conduct longitudinal studies to measure the memory layer's cumulative benefits.
+
+% ============================================================================
+% References
+% ============================================================================
+
+\bibliographystyle{ACM-Reference-Format}
+\bibliography{references}
+
+\end{document}

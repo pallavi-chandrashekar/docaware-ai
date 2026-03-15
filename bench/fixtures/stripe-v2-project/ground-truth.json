@@ -1,0 +1,42 @@
+[
+  {
+    "file": "src/payments.js",
+    "line": 7,
+    "apiName": "Stripe",
+    "category": "security",
+    "isReal": true,
+    "description": "API key hardcoded in source code"
+  },
+  {
+    "file": "src/payments.js",
+    "line": 11,
+    "apiName": "stripe.charges.create",
+    "category": "deprecated_api",
+    "isReal": true,
+    "description": "charges.create is legacy API, use paymentIntents.create"
+  },
+  {
+    "file": "src/payments.js",
+    "line": 22,
+    "apiName": "stripe.customers.list",
+    "category": "anti_pattern",
+    "isReal": true,
+    "description": "No pagination handling, should use auto-pagination or has_more"
+  },
+  {
+    "file": "src/payments.js",
+    "line": 28,
+    "apiName": "JSON.parse",
+    "category": "security",
+    "isReal": true,
+    "description": "Webhook body parsed without signature verification via stripe.webhooks.constructEvent()"
+  },
+  {
+    "file": "src/payments.js",
+    "line": 42,
+    "apiName": "stripe.paymentIntents.create",
+    "category": "deprecated_api",
+    "isReal": false,
+    "description": "This is correct modern usage — should NOT be flagged"
+  }
+]

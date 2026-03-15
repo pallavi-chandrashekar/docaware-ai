@@ -1,0 +1,8 @@
+{
+  "name": "mongoose-v6-benchmark",
+  "version": "1.0.0",
+  "description": "Benchmark fixture: project using Mongoose v6 patterns migrating to v7",
+  "dependencies": {
+    "mongoose": "^6.0.0"
+  }
+}

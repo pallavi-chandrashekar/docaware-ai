@@ -1,0 +1,8 @@
+{
+  "name": "openai-v3-benchmark",
+  "version": "1.0.0",
+  "description": "Benchmark fixture: project using deprecated OpenAI v3 patterns",
+  "dependencies": {
+    "openai": "^3.3.0"
+  }
+}

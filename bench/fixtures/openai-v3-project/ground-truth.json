@@ -1,0 +1,66 @@
+[
+  {
+    "file": "src/chat.js",
+    "line": 4,
+    "apiName": "Configuration",
+    "category": "deprecated_api",
+    "isReal": true,
+    "description": "Configuration class removed in OpenAI v4"
+  },
+  {
+    "file": "src/chat.js",
+    "line": 8,
+    "apiName": "OpenAIApi",
+    "category": "deprecated_api",
+    "isReal": true,
+    "description": "OpenAIApi class removed in OpenAI v4"
+  },
+  {
+    "file": "src/chat.js",
+    "line": 14,
+    "apiName": "openai.createChatCompletion",
+    "category": "deprecated_api",
+    "isReal": true,
+    "description": "createChatCompletion replaced with client.chat.completions.create()"
+  },
+  {
+    "file": "src/chat.js",
+    "line": 23,
+    "apiName": "openai.createCompletion",
+    "category": "deprecated_api",
+    "isReal": true,
+    "description": "createCompletion removed in v4, replaced with client.completions.create()"
+  },
+  {
+    "file": "src/chat.js",
+    "line": 33,
+    "apiName": "openai.createEmbedding",
+    "category": "deprecated_api",
+    "isReal": true,
+    "description": "createEmbedding changed to client.embeddings.create()"
+  },
+  {
+    "file": "src/stream.js",
+    "line": 9,
+    "apiName": "openai.createChatCompletion",
+    "category": "incorrect_usage",
+    "isReal": true,
+    "description": "Streaming via responseType option removed, use async iterator pattern"
+  },
+  {
+    "file": "src/stream.js",
+    "line": 19,
+    "apiName": "response.data.on",
+    "category": "incorrect_usage",
+    "isReal": true,
+    "description": "Stream handling via .on('data') replaced with for-await-of"
+  },
+  {
+    "file": "src/stream.js",
+    "line": 32,
+    "apiName": "openai.createImage",
+    "category": "deprecated_api",
+    "isReal": true,
+    "description": "createImage changed to client.images.generate()"
+  }
+]

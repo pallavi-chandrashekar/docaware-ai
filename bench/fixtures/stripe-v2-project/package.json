@@ -1,0 +1,8 @@
+{
+  "name": "stripe-v2-benchmark",
+  "version": "1.0.0",
+  "description": "Benchmark fixture: Stripe API usage with common misuse patterns",
+  "dependencies": {
+    "stripe": "^12.0.0"
+  }
+}

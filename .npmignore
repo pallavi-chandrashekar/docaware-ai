@@ -1,0 +1,11 @@
+test/
+bench/
+paper/
+.github/
+.docaware/
+.husky/
+coverage/
+commitlint.config.js
+.gitignore
+.DS_Store
+*.tgz

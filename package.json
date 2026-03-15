@@ -29,7 +29,12 @@
     "test": "node --test test/**/*.test.js",
     "test:unit": "node --test test/**/*.test.js",
     "test:watch": "node --test --watch test/**/*.test.js",
-    "benchmark": "node bin/docaware.js review --benchmark --dir .",
+    "bench": "node bench/run-benchmarks.js",
+    "bench:openai": "node bench/run-benchmarks.js --fixture openai",
+    "bench:express": "node bench/run-benchmarks.js --fixture express",
+    "bench:stripe": "node bench/run-benchmarks.js --fixture stripe",
+    "bench:analyze": "node bench/run-benchmarks.js --analyze",
+    "bench:latex": "node lib/benchmark/analyze.js .docaware/benchmarks",
     "prepare": "husky"
   },
   "keywords": [

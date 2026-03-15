@@ -1,0 +1,8 @@
+{
+  "name": "axios-v0-benchmark",
+  "version": "1.0.0",
+  "description": "Benchmark fixture: project using Axios v0.x patterns migrating to v1.x",
+  "dependencies": {
+    "axios": "^0.27.0"
+  }
+}

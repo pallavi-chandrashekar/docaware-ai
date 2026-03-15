@@ -1,0 +1,50 @@
+[
+  {
+    "file": "src/app.js",
+    "line": 7,
+    "apiName": "app.del",
+    "category": "deprecated_api",
+    "isReal": true,
+    "description": "app.del() removed in Express v5, use app.delete()"
+  },
+  {
+    "file": "src/app.js",
+    "line": 13,
+    "apiName": "req.param",
+    "category": "incorrect_usage",
+    "isReal": true,
+    "description": "req.param() removed in Express v5, use req.params/req.query/req.body"
+  },
+  {
+    "file": "src/app.js",
+    "line": 19,
+    "apiName": "res.json",
+    "category": "deprecated_api",
+    "isReal": true,
+    "description": "res.json(status, body) two-arg signature removed in v5"
+  },
+  {
+    "file": "src/app.js",
+    "line": 24,
+    "apiName": "res.send",
+    "category": "incorrect_usage",
+    "isReal": true,
+    "description": "res.send(status) with number argument removed in v5"
+  },
+  {
+    "file": "src/app.js",
+    "line": 29,
+    "apiName": "app.get",
+    "category": "anti_pattern",
+    "isReal": true,
+    "description": "String route patterns with regex changed in v5"
+  },
+  {
+    "file": "src/app.js",
+    "line": 34,
+    "apiName": "res.json",
+    "category": "deprecated_api",
+    "isReal": false,
+    "description": "This is correct single-arg usage — should NOT be flagged"
+  }
+]

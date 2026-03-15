@@ -1,0 +1,66 @@
+[
+  {
+    "file": "src/api.js",
+    "line": 6,
+    "apiName": "axios.create",
+    "category": "incorrect_usage",
+    "isReal": true,
+    "description": "baseUrl (lowercase 'l') is silently ignored; must be baseURL"
+  },
+  {
+    "file": "src/api.js",
+    "line": 11,
+    "apiName": "axios.CancelToken",
+    "category": "deprecated_api",
+    "isReal": true,
+    "description": "CancelToken removed in v1.x, use AbortController with signal option"
+  },
+  {
+    "file": "src/api.js",
+    "line": 19,
+    "apiName": "axios.CancelToken",
+    "category": "deprecated_api",
+    "isReal": true,
+    "description": "CancelToken.source() inside fetchWithCancel is deprecated v0.x pattern"
+  },
+  {
+    "file": "src/api.js",
+    "line": 40,
+    "apiName": "error.response.data",
+    "category": "anti_pattern",
+    "isReal": true,
+    "description": "Accessing error.response.data without axios.isAxiosError() guard crashes on network errors"
+  },
+  {
+    "file": "src/api.js",
+    "line": 48,
+    "apiName": "transformRequest",
+    "category": "deprecated_api",
+    "isReal": true,
+    "description": "transformRequest does not return data; v1.x requires explicit return or body is undefined"
+  },
+  {
+    "file": "src/api.js",
+    "line": 58,
+    "apiName": "transformResponse",
+    "category": "deprecated_api",
+    "isReal": true,
+    "description": "transformResponse calls JSON.parse(data) assuming raw string; v1.x may pass already-parsed object"
+  },
+  {
+    "file": "src/api.js",
+    "line": 71,
+    "apiName": "axios.get",
+    "category": "deprecated_api",
+    "isReal": false,
+    "description": "This is correct v1.x usage with AbortController and baseURL — should NOT be flagged"
+  },
+  {
+    "file": "src/api.js",
+    "line": 87,
+    "apiName": "axios.get",
+    "category": "deprecated_api",
+    "isReal": false,
+    "description": "This is correct usage with proper baseURL and validateStatus — should NOT be flagged"
+  }
+]
