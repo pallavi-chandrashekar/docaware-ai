@@ -1,6 +1,6 @@
 {
   "name": "docaware-ai",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Doc-Augmented AI Dev Assistant — AI code review, migration helper, and agent memory powered by real API documentation",
   "bin": {
     "docaware": "./bin/docaware.js"
