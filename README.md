@@ -6,7 +6,8 @@ DocAware grounds LLM-based code review in version-specific API documentation, re
 
 ## Features
 
-- **AI Code Review** — Scans your code with AST parsing, fetches relevant API docs, and uses Claude to find real issues grounded in documentation
+- **AI Code Review** — Scans your code with AST parsing, fetches relevant API docs, and uses LLMs to find real issues grounded in documentation
+- **Multi-LLM Support** — Works with Claude, GPT-4o, Gemini, or local models via Ollama
 - **Migration Helper** — Detects deprecated/removed APIs when upgrading libraries and generates migration plans
 - **Agent Memory** — Persistent vector-indexed memory that learns from prior reviews and maintains project context across sessions
 
@@ -16,11 +17,35 @@ DocAware grounds LLM-based code review in version-specific API documentation, re
 npm install -g docaware-ai
 ```
 
-Requires Node.js >= 18.17.0 and an [Anthropic API key](https://console.anthropic.com/).
+Requires Node.js >= 18.17.0.
+
+An LLM API key is only needed for AI-powered features (`review` and `migrate`). The `memory` commands and `migrate --no-llm` work without it.
+
+### Supported LLM Providers
+
+| Provider | Env Variable | Install | Models |
+|----------|-------------|---------|--------|
+| **Claude** (default) | `ANTHROPIC_API_KEY` | Built-in | claude-sonnet-4-5, claude-opus-4-5 |
+| **OpenAI** | `OPENAI_API_KEY` | `npm i openai` | gpt-4o, gpt-4, gpt-4o-mini |
+| **Gemini** | `GOOGLE_API_KEY` | `npm i @google/generative-ai` | gemini-2.0-flash, gemini-2.5-pro |
+| **Ollama** (local) | None | [ollama.com](https://ollama.com) | llama3.1, codellama, mistral |
+
+DocAware **auto-detects** your provider from whichever API key is set:
 
 ```bash
+# Option 1: Claude (default)
 export ANTHROPIC_API_KEY=your-key
+
+# Option 2: OpenAI
+export OPENAI_API_KEY=your-key
+
+# Option 3: Gemini
+export GOOGLE_API_KEY=your-key
+
+# Option 4: Ollama (no key needed, just install and run Ollama)
 ```
+
+Or set the provider explicitly in `.docaware.yml` (see Configuration below).
 
 Optionally install [context-hub](https://github.com/andrewyng/context-hub) for curated doc retrieval:
 
@@ -68,8 +93,10 @@ docaware memory clear
 Create a `.docaware.yml` in your project root (optional):
 
 ```yaml
-claude:
-  model: claude-sonnet-4-20250514
+# LLM provider config (auto-detected from env vars if omitted)
+llm:
+  provider: claude      # claude, openai, gemini, ollama
+  model: claude-sonnet-4-5-20250929  # or gpt-4o, gemini-2.0-flash, llama3.1
   max_tokens: 4096
 
 review:
@@ -222,7 +249,7 @@ docaware-ai/
 │   ├── core/                # Config, logging
 │   ├── docs/                # Doc retrieval (chub, npm, GitHub)
 │   ├── analysis/            # AST scanning, diff engine, dep detection
-│   ├── llm/                 # Claude client, prompts, response parsing
+│   ├── llm/                 # Multi-LLM support (Claude, OpenAI, Gemini, Ollama)
 │   ├── review/              # Code review orchestration
 │   ├── migrate/             # Migration orchestration
 │   ├── memory/              # Vector store, embeddings, schemas

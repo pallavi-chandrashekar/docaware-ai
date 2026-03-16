@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2026-03-16
+
+### Added
+
+- **Multi-LLM Support** — Provider abstraction layer supporting Claude, OpenAI GPT-4o, Google Gemini, and Ollama (local models)
+- Auto-detection of LLM provider from environment variables
+- `llm.provider` config option in `.docaware.yml`
+- OpenAI client with function calling for structured output
+- Gemini client with JSON extraction
+- Ollama client for local models (no API key required)
+- Factory function `createLLMClient()` for provider-agnostic client creation
+- Optional dependencies: `openai`, `@google/generative-ai`
+
 ## [1.0.0] - 2026-03-16
 
 ### Added

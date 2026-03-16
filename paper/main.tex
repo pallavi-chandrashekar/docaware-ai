@@ -216,7 +216,7 @@ When reviewing new code, the system queries memory for semantically similar prio
 \subsection{LLM Review Pipeline}
 \label{sec:llm-review}
 
-The review pipeline uses Claude (Anthropic) as the underlying LLM, invoked through a structured tool-use interface rather than free-text generation. This design choice ensures:
+The review pipeline supports multiple LLM backends through a provider abstraction layer: Claude (Anthropic), GPT-4o (OpenAI), Gemini (Google), and local models via Ollama. The provider is auto-detected from available API keys or can be configured explicitly. For providers supporting structured output (Claude's tool\_use, OpenAI's function calling), DocAware uses native structured output; for others, it falls back to JSON extraction from text responses. This design ensures:
 
 \begin{itemize}
     \item \textbf{Structured output:} Findings are returned as JSON objects with required fields (\texttt{file}, \texttt{line}, \texttt{severity}, \texttt{category}, \texttt{apiName}, \texttt{message}, \texttt{suggestion}, \texttt{confidence}), eliminating regex-based parsing errors.
@@ -438,7 +438,8 @@ Our findings support the emerging consensus that LLM agents benefit from \textbf
 \begin{enumerate}
     \item \textbf{Version-specific context is critical.} Generic documentation retrieval is insufficient; agents need docs for the \emph{specific versions} of libraries in the project under review.
     \item \textbf{Structured retrieval outperforms naive context stuffing.} Simply dumping documentation into the prompt is less effective than structured extraction and targeted injection.
-    \item \textbf{Tool-use interfaces improve reliability.} Using Claude's tool-use feature for structured JSON output eliminates parsing failures that plague free-text extraction.
+    \item \textbf{Tool-use interfaces improve reliability.} Using structured output interfaces (Claude's tool-use, OpenAI's function calling) for JSON output eliminates parsing failures that plague free-text extraction.
+    \item \textbf{Provider abstraction enables portability.} DocAware's multi-LLM support (Claude, GPT-4o, Gemini, Ollama) demonstrates that the doc-augmentation approach is model-agnostic---the benefits of structured retrieval are not tied to a specific LLM vendor.
 \end{enumerate}
 
 % ============================================================================
@@ -470,7 +471,7 @@ We presented DocAware, a documentation-augmented AI agent for code review and AP
 
 These results demonstrate that grounding LLM agents in version-specific, structured documentation significantly improves their reliability for software engineering tasks. As LLMs become more deeply integrated into development workflows, ensuring they operate on accurate, current information---rather than relying solely on training data---is essential for trustworthy AI-assisted development.
 
-\textbf{Future work.} We plan to extend DocAware to additional languages (Python, Go, Rust), evaluate on larger real-world codebases, develop more nuanced hallucination metrics, and conduct longitudinal studies to measure the memory layer's cumulative benefits.
+\textbf{Future work.} We plan to extend DocAware to additional languages (Python, Go, Rust), evaluate on larger real-world codebases, develop more nuanced hallucination metrics, conduct longitudinal studies to measure the memory layer's cumulative benefits, and benchmark across different LLM providers to compare how documentation augmentation impacts models of varying capability levels.
 
 % ============================================================================
 % References
